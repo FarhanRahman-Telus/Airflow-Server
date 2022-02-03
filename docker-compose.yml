@@ -57,20 +57,17 @@
         AIRFLOW__API__AUTH_BACKEND: 'airflow.api.auth.backend.basic_auth'
         AIRFLOW__SMTP__SMTP_HOST: 'smtp.gmail.com'
         AIRFLOW__SMTP__SMTP_PORT: '587'
-        AIRFLOW__SMTP__SMTP_USER: 'poltak.jefferson@gmail.com'
-        AIRFLOW__SMTP__SMTP_PASSWORD: 'fownrypdieieonjy'
+        AIRFLOW__SMTP__SMTP_USER: 'dylanmoss117@gmail.com'
+        AIRFLOW__SMTP__SMTP_PASSWORD: '7S6#8%BQjBuu'
         AIRFLOW__SMTP__SMTP_MAIL_FROM: 'noreply_bravo_abbey@gmail.com'
         AIRFLOW__CORE__ENABLE_XCOM_PICKLING: 'true'
         _PIP_ADDITIONAL_REQUIREMENTS: ${_PIP_ADDITIONAL_REQUIREMENTS:-docker==5.0.0}
-        HTTP_PROXY: "http://webproxystatic-bc.tsl.telus.com:8080"
-        HTTPS_PROXY: "http://webproxystatic-bc.tsl.telus.com:8080"
-
       volumes:
         - /data/docker_shared/pod/wsoc_abbey/shared:/home/jovyan/shared
-        - /data/docker_shared/pod/wsoc_abbey/shared/dags:/opt/airflow/dags
+        - /data/docker_shared/pod/wsoc_abbey/shared/dags:/opt/airflow/dags 
         - /data/docker_shared/pod/wsoc_abbey/airflow/logs:/opt/airflow/logs
         - /data/docker_shared/pod/wsoc_abbey/airflow/plugins:/opt/airflow/plugins
-        - /var/run/docker.sock://var/run/docker.sock
+        - /var/run/docker.sock://var/run/docker.sock 
         - /tmp:/tmp
       user: "${AIRFLOW_UID:-0}:${AIRFLOW_GID:-0}"
       depends_on:
@@ -80,26 +77,6 @@
           condition: service_healthy
     
     services:
-      jupyter-notebook:
-          image: wsoc/jupyter_ds:0.2
-          volumes:
-            - /data/docker_shared/pod/wsoc_abbey/shared:/home/jovyan/shared
-            - /data/docker_shared/pod/wsoc_abbey/.ssh:/home/jovyan/.ssh
-          ports:
-            - "20002:22"
-            - "20012:8888"
-            - "20003-20004:20003-20004"
-          user: root
-          environment:
-            PASSWORD: 'verysecretpassword'
-            NB_USER: jovyan
-            NB_UID: 1000
-            NB_GID: 1000
-            CHOWN_HOME: 'yes'
-            CHOWN_HOME_OPTS: -R
-          command: "start-notebook.sh --NotebookApp.token='' --NotebookApp.password='' --allow-root"
-          container_name: jupyter-notebook
-
       postgres:
         image: postgres:13
         environment:
