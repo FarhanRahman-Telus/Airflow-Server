@@ -1,0 +1,182 @@
+# Licensed to the Apache Software Foundation (ASF) under one
+# or more contributor license agreements.  See the NOTICE file
+# distributed with this work for additional information 
+# regarding copyright ownership.  The ASF licenses this file
+# to you under the Apache License, Version 2.0 (the
+# "License"); you may not use this file except in compliance
+# with the License.  You may obtain a copy of the License at
+#
+#   http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing,
+# software distributed under the License is distributed on an
+# "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+# KIND, either express or implied.  See the License for the
+# specific language governing permissions and limitations
+# under the License.
+#
+
+# Basic Airflow cluster configuration for CeleryExecutor with Redis and PostgreSQL.
+#
+# WARNING: This configuration is for local development. Do not use it in a production deployment.
+#
+# This configuration supports basic configuration using environment variables or an .env file
+# The following variables are supported:
+#
+# AIRFLOW_IMAGE_NAME           - Docker image name used to run Airflow.
+#                                Default: apache/airflow:master-python3.8
+# AIRFLOW_UID                  - User ID in Airflow containers
+#                                Default: 50000
+# AIRFLOW_GID                  - Group ID in Airflow containers
+#                                Default: 50000
+#
+# Those configurations are useful mostly in case of standalone testing/running Airflow in test/try-out mode
+#
+# _AIRFLOW_WWW_USER_USERNAME   - Username for the administrator account (if requested).
+#                                Default: airflow
+# _AIRFLOW_WWW_USER_PASSWORD   - Password for the administrator account (if requested).
+#                                Default: airflow
+# _PIP_ADDITIONAL_REQUIREMENTS - Additional PIP requirements to add when starting all containers.
+#                                Default: ''
+#
+# Feel free to modify this file to suit your needs.
+---
+    version: '3'
+    x-airflow-common:
+      &airflow-common
+      image: ${AIRFLOW_IMAGE_NAME:-apache/airflow:2.1.2-python3.8}
+      environment:
+        &airflow-common-env
+        AIRFLOW__CORE__EXECUTOR: CeleryExecutor
+        AIRFLOW__CORE__SQL_ALCHEMY_CONN: postgresql+psycopg2://airflow:LOGt0r0nt0IN@postgres/airflow
+        AIRFLOW__CELERY__RESULT_BACKEND: db+postgresql://airflow:LOGt0r0nt0IN@postgres/airflow
+        AIRFLOW__CELERY__BROKER_URL: redis://:@redis:6379/0
+        AIRFLOW__CORE__FERNET_KEY: '46BKJoQYlPPOexq0OhDZnIlNepKFf87WFwLbfzqDDho='
+        AIRFLOW__CORE__DAGS_ARE_PAUSED_AT_CREATION: 'false'
+        AIRFLOW__CORE__LOAD_EXAMPLES: 'false'
+        AIRFLOW__API__AUTH_BACKEND: 'airflow.api.auth.backend.basic_auth'
+        AIRFLOW__SMTP__SMTP_HOST: 'smtp.gmail.com'
+        AIRFLOW__SMTP__SMTP_PORT: '587'
+        AIRFLOW__SMTP__SMTP_USER: 'poltak.jefferson@gmail.com'
+        AIRFLOW__SMTP__SMTP_PASSWORD: 'fownrypdieieonjy'
+        AIRFLOW__SMTP__SMTP_MAIL_FROM: 'noreply_bravo_abbey@gmail.com'
+        AIRFLOW__CORE__ENABLE_XCOM_PICKLING: 'true'
+        _PIP_ADDITIONAL_REQUIREMENTS: ${_PIP_ADDITIONAL_REQUIREMENTS:-docker==5.0.0}
+      volumes:
+        - /data/docker_shared/pod/wsoc_abbey/shared:/home/jovyan/shared
+        - /data/docker_shared/pod/wsoc_abbey/shared/dags:/opt/airflow/dags
+        - /data/docker_shared/pod/wsoc_abbey/airflow/logs:/opt/airflow/logs
+        - /data/docker_shared/pod/wsoc_abbey/airflow/plugins:/opt/airflow/plugins
+        - /var/run/docker.sock://var/run/docker.sock
+        - /tmp:/tmp
+      user: "${AIRFLOW_UID:-0}:${AIRFLOW_GID:-0}"
+      depends_on:
+        redis:
+          condition: service_healthy
+        postgres:
+          condition: service_healthy
+    
+    services:
+      jupyter-notebook:
+          image: wsoc/jupyter_ds:0.2
+          volumes:
+            - /data/docker_shared/pod/wsoc_abbey/shared:/home/jovyan/shared
+            - /data/docker_shared/pod/wsoc_abbey/.ssh:/home/jovyan/.ssh
+          ports:
+            - "20002:22"
+            - "20012:8888"
+            - "20003-20004:20003-20004"
+          user: root
+          environment:
+            PASSWORD: 'verysecretpassword'
+            NB_USER: jovyan
+            NB_UID: 1000
+            NB_GID: 1000
+            CHOWN_HOME: 'yes'
+            CHOWN_HOME_OPTS: -R
+          command: "start-notebook.sh --NotebookApp.token='' --NotebookApp.password='' --allow-root"
+          container_name: jupyter-notebook
+
+      postgres:
+        image: postgres:13
+        environment:
+          POSTGRES_USER: airflow
+          POSTGRES_PASSWORD: LOGt0r0nt0IN
+          POSTGRES_DB: airflow
+        volumes:
+          - postgres-db-volume:/var/lib/postgresql/data
+        healthcheck:
+          test: ["CMD", "pg_isready", "-U", "airflow"]
+          interval: 5s
+          retries: 5
+        restart: always
+    
+      redis:
+        image: redis:latest
+        ports:
+          - 6379:6379
+        healthcheck:
+          test: ["CMD", "redis-cli", "ping"]
+          interval: 5s
+          timeout: 30s
+          retries: 50
+        restart: always
+     
+      airflow-webserver:
+        <<: *airflow-common
+        command: webserver
+        ports:
+          - 20013:8080
+        healthcheck:
+          test: ["CMD", "curl", "--fail", "http://localhost:8080/health"]
+          interval: 10s
+          timeout: 10s
+          retries: 5
+        restart: always
+    
+      airflow-scheduler:
+        <<: *airflow-common
+        command: scheduler
+        healthcheck:
+          test: ["CMD-SHELL", 'airflow jobs check --job-type SchedulerJob --hostname "$${HOSTNAME}"']
+          interval: 10s
+          timeout: 10s
+          retries: 5
+        restart: always
+    
+      airflow-worker:
+        <<: *airflow-common
+        command: celery worker
+        healthcheck:
+          test:
+            - "CMD-SHELL"
+            - 'celery --app airflow.executors.celery_executor.app inspect ping -d "celery@$${HOSTNAME}"'
+          interval: 10s
+          timeout: 10s
+          retries: 5
+        restart: always
+    
+      airflow-init:
+        <<: *airflow-common
+        command: version
+        environment:
+          <<: *airflow-common-env
+          _AIRFLOW_DB_UPGRADE: 'true'
+          _AIRFLOW_WWW_USER_CREATE: 'true'
+          _AIRFLOW_WWW_USER_USERNAME: ${_AIRFLOW_WWW_USER_USERNAME:-admin}
+          _AIRFLOW_WWW_USER_PASSWORD: ${_AIRFLOW_WWW_USER_PASSWORD:-b4n4n4}
+    
+      flower:
+        <<: *airflow-common
+        command: celery flower
+        ports:
+          - 5555:5555
+        healthcheck:
+          test: ["CMD", "curl", "--fail", "http://localhost:5555/"]
+          interval: 10s
+          timeout: 10s
+          retries: 5
+        restart: always
+    
+    volumes:
+      postgres-db-volume:
