@@ -62,6 +62,9 @@
         AIRFLOW__SMTP__SMTP_MAIL_FROM: 'noreply_bravo_abbey@gmail.com'
         AIRFLOW__CORE__ENABLE_XCOM_PICKLING: 'true'
         _PIP_ADDITIONAL_REQUIREMENTS: ${_PIP_ADDITIONAL_REQUIREMENTS:-docker==5.0.0}
+        HTTP_PROXY: "http://webproxystatic-bc.tsl.telus.com:8080"
+        HTTPS_PROXY: "http://webproxystatic-bc.tsl.telus.com:8080"
+
       volumes:
         - /data/docker_shared/pod/wsoc_abbey/shared:/home/jovyan/shared
         - /data/docker_shared/pod/wsoc_abbey/shared/dags:/opt/airflow/dags
