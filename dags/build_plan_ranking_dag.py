@@ -1,6 +1,6 @@
 from airflow import DAG
-from airflow.operators.python_operator 
-import PythonOperatorimport requests
+from airflow.operators.python_operator import PythonOperator
+import requests
 import pandas as pd
 from datetime import date, timedelta, datetime
 import csv
