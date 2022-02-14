@@ -14,10 +14,13 @@ from email import encoders
 import urllib3
 urllib3.disable_warnings()
 
+seven_days_ago = datetime.combine(datetime.today() - timedelta(7),
+                                      datetime.min.time())
 
 default_args = {
     'owner': 'airflow',
     'depends_on_past': False,
+    'start_date': seven_days_ago,
     'email': ['airflow@airflow.com'],
     'email_on_failure': False,
     'email_on_retry': False,
