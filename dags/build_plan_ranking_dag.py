@@ -1,5 +1,5 @@
 from airflow import DAG
-from airflow.operators import BashOperator,PythonOperator
+from airflow.operators.bash import BashOperator
 import requests
 import pandas as pd
 from datetime import date, timedelta, datetime
