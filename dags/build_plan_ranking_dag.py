@@ -14,7 +14,7 @@ from email import encoders
 import urllib3
 urllib3.disable_warnings()
 
-dag = DAG('Build_Plan_Ranking_Email', default_args=default_args)
+dag = DAG('Build_Plan_Ranking_Email')
 
 PythonOperator(dag=dag,
                task_id='Build_Plan_Ranking_Email',
